@@ -2,7 +2,7 @@
 
 One row per Country Fire Authority (CFA) district per day, 1 July 2009 to 30 June 2022 (Victoria, Australia): how many electricity-network-asset incidents CFA attended, that day's weather, and the length of overhead power line in the district. It is derived from the four public datasets listed below and published so that an R analysis can be re-run without the original downloads (the SILO API needs an email address and Vicmap Power Line has to be ordered by hand).
 
-- File: `district-day-panel.csv`, comma-separated with a header row, no quoting, 15 columns.
+- File: `district-day-panel.csv`, comma-separated with a header row, no quoting, 14 columns.
 - Rows: 99,708 = 21 CFA districts x 4,748 days, ordered by `district`, then `date`.
 - Decimal values are written with 17 significant digits, so they read back as exactly the numbers they were computed as.
 
@@ -24,9 +24,8 @@ One row per Country Fire Authority (CFA) district per day, 1 July 2009 to 30 Jun
 | `pressure_change` | Mean sea-level pressure at 9 am on `date` + 1 minus that at 9 am on `date`, hPa. |
 | `line_km` | Total length of overhead power lines inside the district, km (Vicmap Power Line features cut at the district boundary, all voltage classes). |
 | `lv_km` | Length of the low-voltage (LV) part of `line_km`, km. |
-| `share_unstated` | Share of `line_km` lying in electricity-distributor areas for which the Vicmap metadata states no completeness, i.e. anything other than Powercor, United Energy and CitiPower (AusNet, Jemena, or outside the mapped areas); 0 to 1. |
 
-The weather columns (`tmax` to `pressure_change`) are the daily mean over the SILO DataDrill points inside the district: points of a regular 0.5 degree grid, or one interior point (rounded to SILO's 0.05 degree grid) for a district that contains no grid point. `line_km`, `lv_km` and `share_unstated` are constant within a district; they describe the Vicmap layer as published (features created from December 2020), not the network of 2009.
+The weather columns (`tmax` to `pressure_change`) are the daily mean over the SILO DataDrill points inside the district: points of a regular 0.5 degree grid, or one interior point (rounded to SILO's 0.05 degree grid) for a district that contains no grid point. `line_km` and `lv_km` are constant within a district; they describe the Vicmap layer as published (features created from December 2020), not the network of 2009.
 
 Incident types are what crews classified on arrival, not investigated causes. The CFA extract covers CFA areas only, and 71 incidents without a district code are not in the table. Totals for checking: 4,359 pole or transformer fires, 3,775 lines down and 3,242 arcing incidents (11,376 in all); `y` is 1 on 8,462 district-days.
 
@@ -40,5 +39,14 @@ Incident types are what crews classified on arrival, not investigated causes. Th
 | [Vicmap Infrastructure - Power Line](https://discover.data.vic.gov.au/dataset/vicmap-infrastructure-power-line) | Department of Energy, Environment and Climate Action | CC BY 4.0 |
 
 - Only district totals of line length are published here; no line geometry is redistributed. The power-line layer's own disclaimer says the location of overhead lines has not been verified or audited and may be inaccurate or incomplete.
-- `share_unstated` also uses the Victorian Government open-data layer `electricity_distributor` (metadata ID 9de96197-aacd-5dc7-b952-ca759b8a3e43), for which no licence statement was found; only the resulting shares are published.
 - This table is released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). If you use it, credit the sources above and say that the values are derived: incidents counted per district and day, weather averaged over the district's SILO points, line lengths summed per district.
+
+## Detector outputs (`detector/`)
+
+Separate from the panel: a YOLOv8n detector fine-tuned on public insulator images ([Wu, 2022, figshare](https://doi.org/10.6084/m9.figshare.21200986.v1), CC BY 4.0; classes pollution-flashover, broken, insulator), exported to FP32 ONNX and statically quantised to INT8 with ONNX Runtime. No images or model weights are redistributed here.
+
+- `split.csv`: which split each image is in. The published split puts flipped and rotated copies of one photograph (file suffixes `h`, `v`, `d`) in different sets, so the 400 photographs were re-split 70/15/15 with seed 0 and all copies kept together; `published_split` is the original assignment.
+- `detections.csv`: one row per detection per runtime (`fp32`, `int8`) on the calibration and test images, with confidence of at least 0.01. `correct` is 1 when, in descending confidence order, the detection matches a not-yet-matched labelled box of the same class at IoU of at least 0.5; `best_iou` is the IoU with the best same-class box still unmatched at that point (0 if none was left).
+- `ground-truth.csv`: labelled boxes per image, split and class, so missed boxes can be counted.
+
+These files are released under CC BY 4.0; credit the image dataset above.
